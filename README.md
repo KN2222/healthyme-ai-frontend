@@ -34,11 +34,9 @@ Then open the printed local URL (typically `http://localhost:5173/`) in your bro
 
 ## LLM configuration (Gemini)
 
-By default, if no API key is provided, the app will generate **mock data** so you can still see the full UI and charts.
-
 To enable real LLM-generated reports using **Gemini via `@google/genai`**:
 
-1. Create a `.env.local` file in the project root:
+1. Create a `.env` file in the project root:
 
 ```bash
 VITE_GEMINI_API_KEY=your_gemini_api_key_here
