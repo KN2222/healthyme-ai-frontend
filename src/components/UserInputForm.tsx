@@ -36,13 +36,14 @@ export function UserInputForm() {
         name="userProfile"
         onFinish={onFinish}
         initialValues={{ minutesPerDay: 45 }}
+        autoComplete="on"
       >
         <Form.Item
           label="Name"
           name="name"
           rules={[{ required: true, message: 'Please enter a name' }]}
         >
-          <Input placeholder="John Doe" />
+          <Input placeholder="John Doe" autoComplete="off" />
         </Form.Item>
 
         <Form.Item
@@ -50,7 +51,7 @@ export function UserInputForm() {
           name="age"
           rules={[{ required: true, type: 'number', min: 16, max: 90 }]}
         >
-          <InputNumber style={{ width: '100%' }} />
+          <InputNumber style={{ width: '100%' }} autoComplete="on" />
         </Form.Item>
 
         <Form.Item
@@ -58,7 +59,7 @@ export function UserInputForm() {
           name="weightKg"
           rules={[{ required: true, type: 'number', min: 30, max: 300 }]}
         >
-          <InputNumber style={{ width: '100%' }} />
+          <InputNumber style={{ width: '100%' }} autoComplete="on" />
         </Form.Item>
 
         <Form.Item
@@ -66,7 +67,7 @@ export function UserInputForm() {
           name="heightCm"
           rules={[{ required: true, type: 'number', min: 120, max: 220 }]}
         >
-          <InputNumber style={{ width: '100%' }} />
+          <InputNumber style={{ width: '100%' }} autoComplete="on" />
         </Form.Item>
 
         <Form.Item
@@ -74,7 +75,7 @@ export function UserInputForm() {
           name="goalWeightKg"
           rules={[{ required: true, type: 'number', min: 30, max: 300 }]}
         >
-          <InputNumber style={{ width: '100%' }} />
+          <InputNumber style={{ width: '100%' }} autoComplete="on" />
         </Form.Item>
 
         <Form.Item
@@ -82,7 +83,7 @@ export function UserInputForm() {
           name="minutesPerDay"
           rules={[{ required: true, type: 'number', min: 10, max: 240 }]}
         >
-          <InputNumber style={{ width: '100%' }} />
+          <InputNumber style={{ width: '100%' }} autoComplete="on" />
         </Form.Item>
 
         <Form.Item wrapperCol={{ span: 24 }}>

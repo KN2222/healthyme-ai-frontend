@@ -1,4 +1,4 @@
-import { Card, Col, Descriptions, Flex, Progress, Row, Space, Typography, Alert, Spin } from 'antd';
+import { Button, Card, Col, Descriptions, Flex, Progress, Row, Space, Typography, Alert, Spin } from 'antd';
 import {
   Pie as PieChart,
   Line as LineChart,
@@ -21,17 +21,41 @@ export function HealthReportView() {
 
   const handleDownloadPdf = async () => {
     if (!containerRef.current) return;
-    const canvas = await html2canvas(containerRef.current, {
+    const sourceCanvas = await html2canvas(containerRef.current, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
     });
-    const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save('healthyme-ai-report.pdf');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const padding = 15;
+    const contentWidth = pageWidth - 2 * padding;
+    const contentHeight = pageHeight - 2 * padding;
+    // One page of content in source image pixels (same scale as width)
+    const contentHeightPx = (contentHeight * sourceCanvas.width) / contentWidth;
+    let sourceY = 0;
+
+    while (sourceY < sourceCanvas.height) {
+      const sliceHeightPx = Math.min(contentHeightPx, sourceCanvas.height - sourceY);
+      const sliceHeightMm = (sliceHeightPx * contentWidth) / sourceCanvas.width;
+
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = sourceCanvas.width;
+      pageCanvas.height = sliceHeightPx;
+      const ctx = pageCanvas.getContext('2d');
+      if (!ctx) break;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+      ctx.drawImage(sourceCanvas, 0, sourceY, sourceCanvas.width, sliceHeightPx, 0, 0, sourceCanvas.width, sliceHeightPx);
+
+      const imgData = pageCanvas.toDataURL('image/png');
+      if (sourceY > 0) pdf.addPage();
+      pdf.addImage(imgData, 'PNG', padding, padding, contentWidth, sliceHeightMm);
+
+      sourceY += sliceHeightPx;
+    }
+    pdf.save(`healthyme-ai-report-${report?.user.name || 'user'}-${Date.now()}.pdf`);
   };
 
   if (loading) {
@@ -106,13 +130,8 @@ export function HealthReportView() {
     totalDiff <= 0 ? 100 : Math.min(100, Math.max(0, (progressed / totalDiff) * 100));
 
   return (
-    <div ref={containerRef}>
-      JSON Health Report:
-      <pre style={{ backgroundColor: '#f5f5f5', padding: 16, borderRadius: 8 }}>
-        {JSON.stringify(report, null, 2)}
-      </pre>
-
-      <Flex vertical gap={16}>
+    <div>
+      <Flex vertical gap={16} ref={containerRef}>
         <Space style={{ justifyContent: 'space-between', width: '100%' }}>
           <Title level={3} style={{ marginBottom: 0 }}>
             HealthyMe AI – Personalized Health Report
@@ -123,7 +142,7 @@ export function HealthReportView() {
         </Space>
 
         <Row gutter={[16, 16]}>
-          <Col xs={24} md={14}>
+          <Col xs={24} md={11}>
             <Card title="Summary & BMI">
               <Paragraph>
                 <Text strong>BMI:</Text> {report.summary.bmi.toFixed(1)} (
@@ -133,7 +152,7 @@ export function HealthReportView() {
               <Descriptions
                 bordered
                 size="small"
-                column={2}
+                column={1}
                 style={{ marginTop: 12 }}
               >
                 <Descriptions.Item label="Age">
@@ -152,7 +171,7 @@ export function HealthReportView() {
             </Card>
           </Col>
 
-          <Col xs={24} md={10}>
+          <Col xs={24} md={13}>
             <Card title="Timeline to Goal">
               <Paragraph>
                 Estimated time to goal: {report.timeline.totalWeeks} weeks
@@ -195,14 +214,77 @@ export function HealthReportView() {
             </Card>
           </Col>
 
+
           <Col xs={24} md={10}>
+            <Card title="Activity Composition">
+              <RadarChart
+                data={activityCompositionData}
+                xField="type"
+                yField="value"
+                height={305}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={24}>
+            <Card title="Weight Progress">
+              <LineChart
+                data={weightProgressData}
+                xField="week"
+                yField="weightKg"
+                height={260}
+                point={{ size: 6 }}
+                tooltip={{
+                  formatter: (datum: { week: string; weightKg: number }) => ({
+                    name: datum.week,
+                    value: `${datum.weightKg.toFixed(1)} kg`,
+                  }),
+                }}
+              />
+              <Paragraph type="secondary" style={{ marginTop: 8 }}>
+                Line shows expected weekly weight change toward goal.
+              </Paragraph>
+            </Card>
+          </Col>
+        </Row>
+
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={12}>
+            <Card title="Body Composition (Estimated)">
+              <PieChart
+                data={bodyCompositionData}
+                angleField="value"
+                colorField="type"
+                radius={0.9}
+                label={{
+                  type: 'spider',
+                  content: (datum: { type: string; value: number }) =>
+                    `${datum.type} ${datum.value}%`,
+                }}
+                height={260}
+              />
+              <Paragraph style={{ marginTop: 8 }}>
+                <Text style={{ opacity: 0, pointerEvents: 'none' }} strong>Estimated body composition: </Text>
+                {/* use as place holder for spacing */}
+              </Paragraph>
+            </Card>
+          </Col>
+
+          <Col xs={24} md={12}>
             <Card title="Daily Nutrition Breakdown">
               <PieChart
                 data={nutritionData}
                 angleField="value"
                 colorField="type"
                 radius={0.9}
-                label={{ type: 'inner', offset: '-30%', content: '{value}%' }}
+                label={{
+                  type: 'inner',
+                  offset: '-30%',
+                  content: (datum: { type: string; value: number }) =>
+                    `${datum.type} ${datum.value}%`,
+                }}
                 height={260}
               />
               <Paragraph style={{ marginTop: 8 }}>
@@ -212,75 +294,12 @@ export function HealthReportView() {
             </Card>
           </Col>
         </Row>
-
-        <Row gutter={[16, 16]}>
-          <Col xs={24} md={14}>
-            <Card title="Weight Progress">
-              <LineChart
-                data={weightProgressData}
-                xField="week"
-                yField="weightKg"
-                height={260}
-                point={{ size: 4 }}
-                tooltip={{
-                  formatter: (item: { weightKg: number }) => ({
-                    name: 'Weight (kg)',
-                    value: item.weightKg.toFixed(1),
-                  }),
-                }}
-              />
-              <Paragraph type="secondary" style={{ marginTop: 8 }}>
-                Line shows expected weekly weight change toward goal.
-              </Paragraph>
-            </Card>
-          </Col>
-
-          <Col xs={24} md={10}>
-            <Card title="Activity Composition">
-              <RadarChart
-                data={activityCompositionData}
-                xField="type"
-                yField="value"
-                height={260}
-              />
-            </Card>
-          </Col>
-        </Row>
-
-        <Row gutter={[16, 16]}>
-          <Col xs={24} md={14}>
-            <Card title="Body Composition (Estimated)">
-              <PieChart
-                data={bodyCompositionData}
-                angleField="value"
-                colorField="type"
-                radius={0.9}
-                label={{ type: 'spider', content: '{name} {value}%' }}
-                height={260}
-              />
-            </Card>
-          </Col>
-
-          <Col xs={24} md={10}>
-            <Card
-              title="Export"
-              actions={[
-                <a key="download" onClick={handleDownloadPdf}>
-                  Download report as PDF
-                </a>,
-              ]}
-            >
-              <Paragraph>
-                Export this full report layout as a PDF to share with the user.
-              </Paragraph>
-              <Paragraph type="secondary">
-                For production, you may want a dedicated PDF template and
-                typography tuned specifically for print.
-              </Paragraph>
-            </Card>
-          </Col>
-        </Row>
       </Flex>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+        <Button type="primary" size="large" onClick={handleDownloadPdf}>
+          Download report as PDF
+        </Button>
+      </div>
     </div>
   );
 }
